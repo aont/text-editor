@@ -179,6 +179,45 @@
       gap: 12px;
     }
 
+    .selection-inputs {
+      display: grid;
+      gap: 16px;
+    }
+
+    .selection-input {
+      display: grid;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+
+    .selection-input label {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .selection-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .selection-controls input[type="number"] {
+      width: 96px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #cbd5f5;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .selection-controls input[type="range"] {
+      width: 100%;
+    }
+
     button {
       border: none;
       border-radius: 10px;
@@ -247,6 +286,23 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
 
       <p class="helper">Tip: Move the cursor handle to clear the selection. Start/end handles create a range.</p>
 
+      <div class="selection-inputs" aria-label="Selection positions">
+        <div class="selection-input">
+          <label for="startNumber">Selection start</label>
+          <div class="selection-controls">
+            <input id="startRange" type="range" min="0" value="0" />
+            <input id="startNumber" type="number" min="0" value="0" />
+          </div>
+        </div>
+        <div class="selection-input">
+          <label for="endNumber">Selection end</label>
+          <div class="selection-controls">
+            <input id="endRange" type="range" min="0" value="0" />
+            <input id="endNumber" type="number" min="0" value="0" />
+          </div>
+        </div>
+      </div>
+
       <div class="controls">
         <button id="selectWord">Select Word</button>
         <button id="reset" class="secondary">Reset</button>
@@ -264,6 +320,10 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
     const cursorPos = document.getElementById("cursorPos");
     const startPos = document.getElementById("startPos");
     const endPos = document.getElementById("endPos");
+    const startRange = document.getElementById("startRange");
+    const startNumber = document.getElementById("startNumber");
+    const endRange = document.getElementById("endRange");
+    const endNumber = document.getElementById("endNumber");
     const selectWordButton = document.getElementById("selectWord");
     const resetButton = document.getElementById("reset");
 
@@ -321,6 +381,15 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
       startPos.textContent = `Start: ${state.start}`;
       endPos.textContent = `End: ${state.end}`;
 
+      startRange.max = max;
+      startNumber.max = max;
+      endRange.max = max;
+      endNumber.max = max;
+      startRange.value = state.start;
+      startNumber.value = state.start;
+      endRange.value = state.end;
+      endNumber.value = state.end;
+
       updateTextareaSelection();
     };
 
@@ -339,10 +408,14 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
         state.end = value;
       } else if (type === "start") {
         state.start = value;
-        state.cursor = state.end;
+        if (state.cursor < state.start || state.cursor > state.end) {
+          state.cursor = state.end;
+        }
       } else if (type === "end") {
         state.end = value;
-        state.cursor = state.end;
+        if (state.cursor < state.start || state.cursor > state.end) {
+          state.cursor = state.end;
+        }
       }
       syncUI();
     };
@@ -404,6 +477,20 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
       state.end = clamp(state.end, 0, max);
       syncUI();
     });
+
+    const bindSelectionInput = (rangeInput, numberInput, type) => {
+      const updateFromInput = (event) => {
+        const max = getMax();
+        const value = clamp(Number(event.target.value), 0, max);
+        updateState(type, value);
+      };
+
+      rangeInput.addEventListener("input", updateFromInput);
+      numberInput.addEventListener("input", updateFromInput);
+    };
+
+    bindSelectionInput(startRange, startNumber, "start");
+    bindSelectionInput(endRange, endNumber, "end");
 
     selectWordButton.addEventListener("click", () => {
       const text = editor.value;
