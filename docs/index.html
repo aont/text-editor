@@ -110,6 +110,27 @@
       border-color: #3d6cff;
     }
 
+    .command-buffer {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .command-buffer.is-active {
+      display: flex;
+    }
+
+    .command-buffer label {
+      font-size: 12px;
+      color: #9aa4b2;
+    }
+
+    .command-buffer textarea {
+      min-height: 48px;
+      font-size: 14px;
+      background: #131826;
+    }
+
     .cheatsheet {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -158,6 +179,16 @@
       </div>
     </div>
 
+    <div class="command-buffer" id="command-buffer" aria-hidden="true">
+      <label for="command-input">Command input (C/M active)</label>
+      <textarea
+        id="command-input"
+        aria-label="Command input"
+        spellcheck="false"
+        placeholder="Press a command key…"
+      ></textarea>
+    </div>
+
     <textarea
       id="editor"
       aria-label="Emacs-style text editor"
@@ -175,6 +206,7 @@
       <div><span>C-d</span> delete char</div>
       <div><span>C-k</span> kill to line end</div>
       <div><span>C-y</span> yank (paste)</div>
+      <div><span>C-Space</span> selection mode</div>
       <div><span>M-f</span> forward word</div>
       <div><span>M-b</span> backward word</div>
       <div><span>M-&lt;</span> buffer start</div>
@@ -185,6 +217,8 @@
   <script>
     const editor = document.getElementById("editor");
     const modifierButtons = document.querySelectorAll("[data-modifier]");
+    const commandBuffer = document.getElementById("command-buffer");
+    const commandInput = document.getElementById("command-input");
 
     const modifierState = {
       ctrl: { active: false, latched: false, button: null },
@@ -192,6 +226,7 @@
     };
 
     let killBuffer = "";
+    const selectionState = { active: false, anchor: 0 };
 
     const getLineBounds = (text, index) => {
       const start = text.lastIndexOf("\n", index - 1) + 1;
@@ -227,6 +262,22 @@
       editor.focus();
     };
 
+    const applySelection = (pos) => {
+      if (selectionState.active) {
+        editor.setSelectionRange(selectionState.anchor, pos);
+        editor.focus();
+        return;
+      }
+      moveCursor(pos);
+    };
+
+    const exitSelectionMode = () => {
+      if (!selectionState.active) return;
+      selectionState.active = false;
+      const pos = editor.selectionEnd;
+      editor.setSelectionRange(pos, pos);
+    };
+
     const moveVertical = (direction) => {
       const text = editor.value;
       const pos = editor.selectionStart;
@@ -237,12 +288,12 @@
         : text.indexOf("\n", lineStart);
 
       if (direction === "up" && targetLineIndex === -1) {
-        moveCursor(0);
+        applySelection(0);
         return;
       }
 
       if (direction === "down" && targetLineIndex === -1) {
-        moveCursor(text.length);
+        applySelection(text.length);
         return;
       }
 
@@ -251,7 +302,7 @@
         : targetLineIndex + 1;
       const targetLineEnd = getLineBounds(text, targetLineStart).end;
       const nextPos = Math.min(targetLineStart + column, targetLineEnd);
-      moveCursor(nextPos);
+      applySelection(nextPos);
     };
 
     const moveWord = (direction) => {
@@ -262,18 +313,18 @@
         const after = text.slice(pos);
         const match = after.match(/\w+|\W+/);
         if (!match) {
-          moveCursor(text.length);
+          applySelection(text.length);
           return;
         }
-        moveCursor(pos + match[0].length);
+        applySelection(pos + match[0].length);
       } else {
         const before = text.slice(0, pos);
         const match = before.match(/(\w+|\W+)(?=\w*\W*$)/);
         if (!match) {
-          moveCursor(0);
+          applySelection(0);
           return;
         }
-        moveCursor(before.length - match[0].length);
+        applySelection(before.length - match[0].length);
       }
     };
 
@@ -281,6 +332,7 @@
       const { selectionStart, selectionEnd, value } = editor;
       if (selectionStart !== selectionEnd) {
         editor.value = value.slice(0, selectionStart) + value.slice(selectionEnd);
+        exitSelectionMode();
         moveCursor(selectionStart);
         return;
       }
@@ -295,6 +347,7 @@
       const { end } = getLineBounds(value, selectionStart);
       killBuffer = value.slice(selectionStart, end);
       editor.value = value.slice(0, selectionStart) + value.slice(end);
+      exitSelectionMode();
       moveCursor(selectionStart);
     };
 
@@ -302,22 +355,33 @@
       if (!killBuffer) return;
       const { selectionStart, selectionEnd, value } = editor;
       editor.value = value.slice(0, selectionStart) + killBuffer + value.slice(selectionEnd);
+      exitSelectionMode();
       moveCursor(selectionStart + killBuffer.length);
+    };
+
+    const toggleSelectionMode = () => {
+      if (selectionState.active) {
+        exitSelectionMode();
+        return;
+      }
+      selectionState.active = true;
+      selectionState.anchor = editor.selectionStart;
+      editor.setSelectionRange(selectionState.anchor, selectionState.anchor);
     };
 
     const executeCommand = (command) => {
       switch (command) {
         case "line-start":
-          moveCursor(getLineBounds(editor.value, editor.selectionStart).start);
+          applySelection(getLineBounds(editor.value, editor.selectionStart).start);
           break;
         case "line-end":
-          moveCursor(getLineBounds(editor.value, editor.selectionStart).end);
+          applySelection(getLineBounds(editor.value, editor.selectionStart).end);
           break;
         case "forward-char":
-          moveCursor(Math.min(editor.value.length, editor.selectionStart + 1));
+          applySelection(Math.min(editor.value.length, editor.selectionStart + 1));
           break;
         case "backward-char":
-          moveCursor(Math.max(0, editor.selectionStart - 1));
+          applySelection(Math.max(0, editor.selectionStart - 1));
           break;
         case "next-line":
           moveVertical("down");
@@ -341,10 +405,13 @@
           moveWord("backward");
           break;
         case "buffer-start":
-          moveCursor(0);
+          applySelection(0);
           break;
         case "buffer-end":
-          moveCursor(editor.value.length);
+          applySelection(editor.value.length);
+          break;
+        case "selection-mode":
+          toggleSelectionMode();
           break;
         default:
           return false;
@@ -362,7 +429,8 @@
         p: "previous-line",
         d: "delete-char",
         k: "kill-line",
-        y: "yank"
+        y: "yank",
+        space: "selection-mode"
       },
       meta: {
         f: "forward-word",
@@ -372,18 +440,32 @@
       }
     };
 
+    const isAnyModifierActive = () => modifierState.ctrl.active || modifierState.meta.active;
+
+    const setCommandBufferActive = (active) => {
+      commandBuffer.classList.toggle("is-active", active);
+      commandBuffer.setAttribute("aria-hidden", String(!active));
+      if (active) {
+        commandInput.value = "";
+        commandInput.focus();
+      }
+    };
+
     const handleModifierToggle = (key, latched) => {
       if (latched) {
         setModifierState(key, { active: true, latched: true });
+        setCommandBufferActive(true);
         return;
       }
 
       if (modifierState[key].latched) {
         setModifierState(key, { active: false, latched: false });
+        setCommandBufferActive(isAnyModifierActive());
         return;
       }
 
       setModifierState(key, { active: !modifierState[key].active, latched: false });
+      setCommandBufferActive(isAnyModifierActive());
     };
 
     modifierButtons.forEach((button) => {
@@ -394,25 +476,59 @@
       button.addEventListener("dblclick", () => handleModifierToggle(key, true));
     });
 
+    const getBindingKey = (event) => {
+      if (event.key === " " || event.key === "Spacebar" || event.key === "Space") {
+        return "space";
+      }
+      return event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    };
+
+    const finalizeCommand = () => {
+      const shouldStayActive = modifierState.ctrl.latched || modifierState.meta.latched;
+      if (!shouldStayActive) {
+        setModifierState("ctrl", { active: false, latched: false });
+        setModifierState("meta", { active: false, latched: false });
+        setCommandBufferActive(false);
+        editor.focus();
+      } else {
+        commandInput.value = "";
+        commandInput.focus();
+      }
+    };
+
     editor.addEventListener("keydown", (event) => {
-      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      if (modifierState.ctrl.active || modifierState.meta.active) {
+        event.preventDefault();
+        setCommandBufferActive(true);
+      }
+    });
+
+    editor.addEventListener("input", () => {
+      exitSelectionMode();
+    });
+
+    commandInput.addEventListener("keydown", (event) => {
       const ctrlActive = modifierState.ctrl.active || event.ctrlKey;
       const metaActive = modifierState.meta.active || event.metaKey;
-
       if (!ctrlActive && !metaActive) {
         return;
       }
 
+      const key = getBindingKey(event);
       const bindings = ctrlActive ? keyBindings.ctrl : keyBindings.meta;
       const command = bindings[key];
+
       if (!command) {
         if (ctrlActive) resetModifierIfNeeded("ctrl");
         if (metaActive) resetModifierIfNeeded("meta");
+        setCommandBufferActive(false);
+        editor.focus();
         return;
       }
 
       event.preventDefault();
       executeCommand(command);
+      commandInput.value = "";
 
       if (ctrlActive && modifierState.ctrl.active && !modifierState.ctrl.latched) {
         resetModifierIfNeeded("ctrl");
@@ -421,6 +537,8 @@
       if (metaActive && modifierState.meta.active && !modifierState.meta.latched) {
         resetModifierIfNeeded("meta");
       }
+
+      finalizeCommand();
     });
   </script>
 </body>
