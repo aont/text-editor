@@ -354,7 +354,7 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
       editor.setSelectionRange(start, end);
     };
 
-    const syncUI = () => {
+    const syncUI = ({ updateSelection = true } = {}) => {
       const max = getMax();
       state.cursor = clamp(state.cursor, 0, max);
       state.start = clamp(state.start, 0, max);
@@ -390,7 +390,9 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
       endRange.value = state.end;
       endNumber.value = state.end;
 
-      updateTextareaSelection();
+      if (updateSelection) {
+        updateTextareaSelection();
+      }
     };
 
     const positionToValue = (clientX) => {
@@ -483,7 +485,7 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
       state.cursor = clamp(state.cursor, 0, max);
       state.start = clamp(state.start, 0, max);
       state.end = clamp(state.end, 0, max);
-      syncUI();
+      syncUI({ updateSelection: false });
     });
 
     const bindSelectionInput = (rangeInput, numberInput, type) => {
