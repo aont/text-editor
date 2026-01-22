@@ -345,13 +345,39 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
       return (value / max) * 100;
     };
 
+    const getLineHeight = () => {
+      const computed = window.getComputedStyle(editor).lineHeight;
+      const parsed = Number.parseFloat(computed);
+      if (Number.isNaN(parsed)) {
+        return 20;
+      }
+      return parsed;
+    };
+
+    const scrollCaretIntoView = (index) => {
+      const textBeforeCaret = editor.value.slice(0, index);
+      const lineIndex = textBeforeCaret.split("\n").length - 1;
+      const lineHeight = getLineHeight();
+      const targetTop = Math.max(0, lineIndex * lineHeight - editor.clientHeight / 2);
+      editor.scrollTop = targetTop;
+    };
+
+    const focusEditorForSelection = () => {
+      if (document.activeElement !== editor) {
+        editor.focus({ preventScroll: true });
+      }
+    };
+
     const updateTextareaSelection = () => {
       const { start, end, cursor } = state;
+      focusEditorForSelection();
       if (start === end) {
         editor.setSelectionRange(cursor, cursor);
+        scrollCaretIntoView(cursor);
         return;
       }
       editor.setSelectionRange(start, end);
+      scrollCaretIntoView(end);
     };
 
     const syncUI = ({ updateSelection = true } = {}) => {
