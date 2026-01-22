@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Emacs-Style Editor</title>
+  <title>Text Editor</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -35,7 +35,7 @@
       margin: 0;
       font-size: 13px;
       color: #9aa4b2;
-      max-width: 720px;
+      max-width: 760px;
       line-height: 1.5;
     }
 
@@ -48,53 +48,48 @@
       box-sizing: border-box;
     }
 
-    .toolbar {
+    .card {
+      background: #131826;
+      border: 1px solid #2d3445;
+      border-radius: 14px;
+      padding: 16px;
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 12px;
-      align-items: center;
     }
 
-    .modifier-button {
+    .mode-toggle {
+      display: inline-flex;
+      background: #0b0d12;
+      border: 1px solid #2d3445;
+      border-radius: 999px;
+      padding: 4px;
+      gap: 4px;
+      align-self: flex-start;
+    }
+
+    .mode-toggle button {
       appearance: none;
-      border: 1px solid transparent;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 14px;
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 13px;
       font-weight: 600;
-      background: #243049;
-      color: #f0f4ff;
-      cursor: pointer;
-      min-width: 80px;
-      transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
-    }
-
-    .modifier-button:active {
-      transform: translateY(1px);
-    }
-
-    .modifier-button.is-active {
-      border-color: #3d6cff;
-      background: #2f3f60;
-      box-shadow: 0 0 0 2px rgba(61, 108, 255, 0.2);
-    }
-
-    .modifier-button.is-latched {
-      border-color: #66d19e;
-      background: #1f3d2b;
-      color: #e6ffef;
-      box-shadow: 0 0 0 2px rgba(102, 209, 158, 0.3);
-    }
-
-    .modifier-hint {
-      font-size: 12px;
+      background: transparent;
       color: #9aa4b2;
+      cursor: pointer;
+    }
+
+    .mode-toggle button.is-active {
+      background: #243049;
+      color: #f5f7fb;
+      box-shadow: 0 0 0 1px rgba(61, 108, 255, 0.4);
     }
 
     textarea {
       width: 100%;
-      flex: 1;
-      resize: none;
+      min-height: 180px;
+      resize: vertical;
       padding: 16px;
       font-size: 15px;
       line-height: 1.6;
@@ -102,7 +97,7 @@
       border: 1px solid #2d3445;
       background: #0b0d12;
       color: #f5f7fb;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+      box-shadow: inset 0 0 0 1px transparent;
     }
 
     textarea:focus {
@@ -110,38 +105,98 @@
       border-color: #3d6cff;
     }
 
-    .command-buffer {
-      display: none;
-      flex-direction: column;
-      gap: 8px;
+    .display {
+      min-height: 180px;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #2d3445;
+      background: #0b0d12;
+      color: #f5f7fb;
+      white-space: pre-wrap;
+      font-size: 15px;
+      line-height: 1.6;
+      position: relative;
     }
 
-    .command-buffer.is-active {
-      display: flex;
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      height: 1.4em;
+      background: #66d19e;
+      vertical-align: text-bottom;
+      box-shadow: 0 0 10px rgba(102, 209, 158, 0.6);
+      border-radius: 2px;
     }
 
-    .command-buffer label {
+    .selection {
+      background: rgba(61, 108, 255, 0.3);
+      border-radius: 3px;
+    }
+
+    .status {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 8px 16px;
       font-size: 12px;
       color: #9aa4b2;
     }
 
-    .command-buffer textarea {
-      min-height: 48px;
-      font-size: 14px;
-      background: #131826;
-    }
-
-    .cheatsheet {
+    .controls {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 8px 16px;
-      font-size: 12px;
-      color: #b5bfcd;
+      gap: 12px;
     }
 
-    .cheatsheet span {
-      color: #f1f4f8;
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .control-row label {
+      font-size: 12px;
+      color: #9aa4b2;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    input[type="range"] {
+      width: 220px;
+    }
+
+    .arrow-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      gap: 6px;
+      justify-content: flex-start;
+    }
+
+    .arrow-grid button,
+    .pill-button {
+      appearance: none;
+      border: 1px solid #2d3445;
+      background: #1b2233;
+      color: #f5f7fb;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
       font-weight: 600;
+      cursor: pointer;
+    }
+
+    .arrow-grid button:active,
+    .pill-button:active {
+      transform: translateY(1px);
+    }
+
+    .pill-button {
+      min-width: 140px;
+    }
+
+    .helper {
+      font-size: 12px;
+      color: #9aa4b2;
     }
 
     @media (max-width: 600px) {
@@ -149,397 +204,298 @@
         padding: 16px;
       }
 
-      .modifier-button {
-        min-width: 70px;
-        font-size: 13px;
+      input[type="range"] {
+        width: 100%;
       }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Emacs-Style Editor</h1>
+    <h1>Text Editor</h1>
     <p>
-      Use the on-screen C (Ctrl) and M (Meta) buttons to trigger Emacs-style commands.
-      Tap once for a single command, or double-click to latch a modifier. Typing without
-      modifiers inserts characters normally.
+      Type in Input mode to enter text. Switch to Cursor mode to move the cursor and
+      set selection ranges without triggering the iOS on-screen keyboard.
     </p>
   </header>
 
   <main>
-    <div class="toolbar" aria-label="Modifier toolbar">
-      <button type="button" class="modifier-button" data-modifier="ctrl" aria-pressed="false">
-        C
-      </button>
-      <button type="button" class="modifier-button" data-modifier="meta" aria-pressed="false">
-        M
-      </button>
-      <div class="modifier-hint">
-        Double-click to latch • Click to toggle once
+    <section class="card" aria-label="Mode selection">
+      <div class="mode-toggle" role="tablist" aria-label="Editor mode">
+        <button type="button" class="is-active" id="input-mode" role="tab" aria-selected="true">
+          Input mode
+        </button>
+        <button type="button" id="cursor-mode" role="tab" aria-selected="false">
+          Cursor mode
+        </button>
       </div>
-    </div>
+      <div class="helper" id="mode-helper">Input mode is active. Type to update the text.</div>
+    </section>
 
-    <div class="command-buffer" id="command-buffer" aria-hidden="true">
-      <label for="command-input">Command input (C/M active)</label>
-      <textarea
-        id="command-input"
-        aria-label="Command input"
-        spellcheck="false"
-        placeholder="Press a command key…"
-      ></textarea>
-    </div>
+    <section class="card" aria-label="Text editor">
+      <label for="text-input" class="helper">Text input</label>
+      <textarea id="text-input" placeholder="Start typing here..." spellcheck="false"></textarea>
+      <div class="helper">Display preview</div>
+      <div class="display" id="text-display" aria-live="polite"></div>
+      <div class="status" id="status"></div>
+    </section>
 
-    <textarea
-      id="editor"
-      aria-label="Emacs-style text editor"
-      spellcheck="false"
-      placeholder="Start typing here..."
-    ></textarea>
+    <section class="card" aria-label="Cursor mode controls" id="cursor-controls" hidden>
+      <div class="controls">
+        <div class="control-row">
+          <button type="button" class="pill-button" id="reset-selection">Collapse selection to cursor</button>
+          <div class="helper">Use sliders to set exact positions without a keyboard.</div>
+        </div>
 
-    <div class="cheatsheet" aria-label="Emacs key binding cheatsheet">
-      <div><span>C-a</span> line start</div>
-      <div><span>C-e</span> line end</div>
-      <div><span>C-f</span> forward char</div>
-      <div><span>C-b</span> backward char</div>
-      <div><span>C-n</span> next line</div>
-      <div><span>C-p</span> previous line</div>
-      <div><span>C-d</span> delete char</div>
-      <div><span>C-k</span> kill to line end</div>
-      <div><span>C-y</span> yank (paste)</div>
-      <div><span>C-Space</span> selection mode</div>
-      <div><span>M-f</span> forward word</div>
-      <div><span>M-b</span> backward word</div>
-      <div><span>M-&lt;</span> buffer start</div>
-      <div><span>M-&gt;</span> buffer end</div>
-    </div>
+        <div class="control-row">
+          <label>
+            Cursor position
+            <input type="range" id="cursor-slider" min="0" value="0" step="1" />
+            <span class="helper" id="cursor-value">0</span>
+          </label>
+          <label>
+            Selection start
+            <input type="range" id="selection-start" min="0" value="0" step="1" />
+            <span class="helper" id="selection-start-value">0</span>
+          </label>
+          <label>
+            Selection end
+            <input type="range" id="selection-end" min="0" value="0" step="1" />
+            <span class="helper" id="selection-end-value">0</span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="arrow-grid" aria-label="Cursor movement">
+            <span></span>
+            <button type="button" data-move="up">▲</button>
+            <span></span>
+            <button type="button" data-move="left">◀</button>
+            <button type="button" data-move="down">▼</button>
+            <button type="button" data-move="right">▶</button>
+          </div>
+          <div class="helper">Move the cursor up, down, left, or right.</div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script>
-    const editor = document.getElementById("editor");
-    const modifierButtons = document.querySelectorAll("[data-modifier]");
-    const commandBuffer = document.getElementById("command-buffer");
-    const commandInput = document.getElementById("command-input");
+    const inputModeButton = document.getElementById("input-mode");
+    const cursorModeButton = document.getElementById("cursor-mode");
+    const modeHelper = document.getElementById("mode-helper");
+    const textInput = document.getElementById("text-input");
+    const textDisplay = document.getElementById("text-display");
+    const status = document.getElementById("status");
+    const cursorControls = document.getElementById("cursor-controls");
+    const cursorSlider = document.getElementById("cursor-slider");
+    const selectionStartSlider = document.getElementById("selection-start");
+    const selectionEndSlider = document.getElementById("selection-end");
+    const cursorValue = document.getElementById("cursor-value");
+    const selectionStartValue = document.getElementById("selection-start-value");
+    const selectionEndValue = document.getElementById("selection-end-value");
+    const resetSelectionButton = document.getElementById("reset-selection");
 
-    const modifierState = {
-      ctrl: { active: false, latched: false, button: null },
-      meta: { active: false, latched: false, button: null }
+    const state = {
+      text: "",
+      cursor: 0,
+      selectionStart: 0,
+      selectionEnd: 0,
+      mode: "input"
     };
 
-    let killBuffer = "";
-    const selectionState = { active: false, anchor: 0 };
+    const escapeHtml = (value) =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 
-    const getLineBounds = (text, index) => {
-      const start = text.lastIndexOf("\n", index - 1) + 1;
-      const endBreak = text.indexOf("\n", index);
-      const end = endBreak === -1 ? text.length : endBreak;
-      return { start, end };
+    const updateSliders = () => {
+      const max = state.text.length;
+      [cursorSlider, selectionStartSlider, selectionEndSlider].forEach((slider) => {
+        slider.max = String(max);
+      });
+
+      cursorSlider.value = String(state.cursor);
+      selectionStartSlider.value = String(state.selectionStart);
+      selectionEndSlider.value = String(state.selectionEnd);
+
+      cursorValue.textContent = String(state.cursor);
+      selectionStartValue.textContent = String(state.selectionStart);
+      selectionEndValue.textContent = String(state.selectionEnd);
     };
 
-    const getColumn = (text, index) => index - (text.lastIndexOf("\n", index - 1) + 1);
-
-    const updateButton = (state) => {
-      const { button, active, latched } = state;
-      if (!button) return;
-      button.classList.toggle("is-active", active && !latched);
-      button.classList.toggle("is-latched", latched);
-      button.setAttribute("aria-pressed", String(active || latched));
+    const updateStatus = () => {
+      status.innerHTML = `
+        <div>Characters: ${state.text.length}</div>
+        <div>Cursor: ${state.cursor}</div>
+        <div>Selection: ${Math.min(state.selectionStart, state.selectionEnd)}–${Math.max(state.selectionStart, state.selectionEnd)}</div>
+      `;
     };
 
-    const setModifierState = (key, { active, latched }) => {
-      modifierState[key].active = active;
-      modifierState[key].latched = latched;
-      updateButton(modifierState[key]);
+    const setCursor = (position) => {
+      const clamped = Math.max(0, Math.min(state.text.length, position));
+      state.cursor = clamped;
+      state.selectionStart = clamped;
+      state.selectionEnd = clamped;
+      updateSliders();
     };
 
-    const resetModifierIfNeeded = (key) => {
-      if (modifierState[key].active && !modifierState[key].latched) {
-        setModifierState(key, { active: false, latched: false });
-      }
+    const setSelectionRange = (start, end) => {
+      const clampedStart = Math.max(0, Math.min(state.text.length, start));
+      const clampedEnd = Math.max(0, Math.min(state.text.length, end));
+      state.selectionStart = clampedStart;
+      state.selectionEnd = clampedEnd;
+      state.cursor = clampedEnd;
+      updateSliders();
     };
 
-    const moveCursor = (pos) => {
-      editor.setSelectionRange(pos, pos);
-      editor.focus();
+    const getLineStart = (text, index) => text.lastIndexOf("\n", index - 1) + 1;
+
+    const getLineEnd = (text, index) => {
+      const nextBreak = text.indexOf("\n", index);
+      return nextBreak === -1 ? text.length : nextBreak;
     };
 
-    const applySelection = (pos) => {
-      if (selectionState.active) {
-        editor.setSelectionRange(selectionState.anchor, pos);
-        editor.focus();
-        return;
-      }
-      moveCursor(pos);
-    };
+    const getColumn = (text, index) => index - getLineStart(text, index);
 
-    const exitSelectionMode = () => {
-      if (!selectionState.active) return;
-      selectionState.active = false;
-      const pos = editor.selectionEnd;
-      editor.setSelectionRange(pos, pos);
-    };
-
-    const moveVertical = (direction) => {
-      const text = editor.value;
-      const pos = editor.selectionStart;
-      const { start: lineStart } = getLineBounds(text, pos);
+    const moveCursorVertical = (direction) => {
+      const text = state.text;
+      const pos = state.cursor;
+      const lineStart = getLineStart(text, pos);
       const column = getColumn(text, pos);
       const targetLineIndex = direction === "up"
         ? text.lastIndexOf("\n", lineStart - 2)
         : text.indexOf("\n", lineStart);
 
       if (direction === "up" && targetLineIndex === -1) {
-        applySelection(0);
+        setCursor(0);
         return;
       }
 
       if (direction === "down" && targetLineIndex === -1) {
-        applySelection(text.length);
+        setCursor(text.length);
         return;
       }
 
       const targetLineStart = direction === "up"
-        ? (text.lastIndexOf("\n", targetLineIndex - 1) + 1)
+        ? text.lastIndexOf("\n", targetLineIndex - 1) + 1
         : targetLineIndex + 1;
-      const targetLineEnd = getLineBounds(text, targetLineStart).end;
+      const targetLineEnd = getLineEnd(text, targetLineStart);
       const nextPos = Math.min(targetLineStart + column, targetLineEnd);
-      applySelection(nextPos);
+      setCursor(nextPos);
     };
 
-    const moveWord = (direction) => {
-      const text = editor.value;
-      const pos = editor.selectionStart;
+    const moveCursorHorizontal = (direction) => {
+      if (direction === "left") {
+        setCursor(state.cursor - 1);
+      }
+      if (direction === "right") {
+        setCursor(state.cursor + 1);
+      }
+    };
 
-      if (direction === "forward") {
-        const after = text.slice(pos);
-        const match = after.match(/\w+|\W+/);
-        if (!match) {
-          applySelection(text.length);
-          return;
+    const renderDisplay = () => {
+      const start = Math.min(state.selectionStart, state.selectionEnd);
+      const end = Math.max(state.selectionStart, state.selectionEnd);
+      let output = "";
+
+      for (let i = 0; i <= state.text.length; i += 1) {
+        if (i === state.cursor) {
+          output += '<span class="cursor" aria-hidden="true"></span>';
         }
-        applySelection(pos + match[0].length);
-      } else {
-        const before = text.slice(0, pos);
-        const match = before.match(/(\w+|\W+)(?=\w*\W*$)/);
-        if (!match) {
-          applySelection(0);
-          return;
+        if (i === state.text.length) break;
+
+        const char = state.text[i];
+        const escaped = char === "\n" ? "\n" : escapeHtml(char);
+        if (i >= start && i < end) {
+          output += `<span class="selection">${escaped}</span>`;
+        } else {
+          output += escaped;
         }
-        applySelection(before.length - match[0].length);
-      }
-    };
-
-    const deleteCharForward = () => {
-      const { selectionStart, selectionEnd, value } = editor;
-      if (selectionStart !== selectionEnd) {
-        editor.value = value.slice(0, selectionStart) + value.slice(selectionEnd);
-        exitSelectionMode();
-        moveCursor(selectionStart);
-        return;
-      }
-      if (selectionStart < value.length) {
-        editor.value = value.slice(0, selectionStart) + value.slice(selectionStart + 1);
-        moveCursor(selectionStart);
-      }
-    };
-
-    const killToEndOfLine = () => {
-      const { selectionStart, value } = editor;
-      const { end } = getLineBounds(value, selectionStart);
-      killBuffer = value.slice(selectionStart, end);
-      editor.value = value.slice(0, selectionStart) + value.slice(end);
-      exitSelectionMode();
-      moveCursor(selectionStart);
-    };
-
-    const yank = () => {
-      if (!killBuffer) return;
-      const { selectionStart, selectionEnd, value } = editor;
-      editor.value = value.slice(0, selectionStart) + killBuffer + value.slice(selectionEnd);
-      exitSelectionMode();
-      moveCursor(selectionStart + killBuffer.length);
-    };
-
-    const toggleSelectionMode = () => {
-      if (selectionState.active) {
-        exitSelectionMode();
-        return;
-      }
-      selectionState.active = true;
-      selectionState.anchor = editor.selectionStart;
-      editor.setSelectionRange(selectionState.anchor, selectionState.anchor);
-    };
-
-    const executeCommand = (command) => {
-      switch (command) {
-        case "line-start":
-          applySelection(getLineBounds(editor.value, editor.selectionStart).start);
-          break;
-        case "line-end":
-          applySelection(getLineBounds(editor.value, editor.selectionStart).end);
-          break;
-        case "forward-char":
-          applySelection(Math.min(editor.value.length, editor.selectionStart + 1));
-          break;
-        case "backward-char":
-          applySelection(Math.max(0, editor.selectionStart - 1));
-          break;
-        case "next-line":
-          moveVertical("down");
-          break;
-        case "previous-line":
-          moveVertical("up");
-          break;
-        case "delete-char":
-          deleteCharForward();
-          break;
-        case "kill-line":
-          killToEndOfLine();
-          break;
-        case "yank":
-          yank();
-          break;
-        case "forward-word":
-          moveWord("forward");
-          break;
-        case "backward-word":
-          moveWord("backward");
-          break;
-        case "buffer-start":
-          applySelection(0);
-          break;
-        case "buffer-end":
-          applySelection(editor.value.length);
-          break;
-        case "selection-mode":
-          toggleSelectionMode();
-          break;
-        default:
-          return false;
-      }
-      return true;
-    };
-
-    const keyBindings = {
-      ctrl: {
-        a: "line-start",
-        e: "line-end",
-        f: "forward-char",
-        b: "backward-char",
-        n: "next-line",
-        p: "previous-line",
-        d: "delete-char",
-        k: "kill-line",
-        y: "yank",
-        space: "selection-mode"
-      },
-      meta: {
-        f: "forward-word",
-        b: "backward-word",
-        "<": "buffer-start",
-        ">": "buffer-end"
-      }
-    };
-
-    const isAnyModifierActive = () => modifierState.ctrl.active || modifierState.meta.active;
-
-    const setCommandBufferActive = (active) => {
-      commandBuffer.classList.toggle("is-active", active);
-      commandBuffer.setAttribute("aria-hidden", String(!active));
-      if (active) {
-        commandInput.value = "";
-        commandInput.focus();
-      }
-    };
-
-    const handleModifierToggle = (key, latched) => {
-      if (latched) {
-        setModifierState(key, { active: true, latched: true });
-        setCommandBufferActive(true);
-        return;
       }
 
-      if (modifierState[key].latched) {
-        setModifierState(key, { active: false, latched: false });
-        setCommandBufferActive(isAnyModifierActive());
-        return;
-      }
-
-      setModifierState(key, { active: !modifierState[key].active, latched: false });
-      setCommandBufferActive(isAnyModifierActive());
+      textDisplay.innerHTML = output || '<span class="helper">(Text will appear here.)</span>';
     };
 
-    modifierButtons.forEach((button) => {
-      const key = button.dataset.modifier;
-      modifierState[key].button = button;
-
-      button.addEventListener("click", () => handleModifierToggle(key, false));
-      button.addEventListener("dblclick", () => handleModifierToggle(key, true));
-    });
-
-    const getBindingKey = (event) => {
-      if (event.key === " " || event.key === "Spacebar" || event.key === "Space") {
-        return "space";
-      }
-      return event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    const syncFromTextarea = () => {
+      state.text = textInput.value;
+      state.cursor = textInput.selectionEnd;
+      state.selectionStart = textInput.selectionStart;
+      state.selectionEnd = textInput.selectionEnd;
+      updateSliders();
+      updateStatus();
+      renderDisplay();
     };
 
-    const finalizeCommand = () => {
-      const shouldStayActive = modifierState.ctrl.latched || modifierState.meta.latched;
-      if (!shouldStayActive) {
-        setModifierState("ctrl", { active: false, latched: false });
-        setModifierState("meta", { active: false, latched: false });
-        setCommandBufferActive(false);
-        editor.focus();
+    const setMode = (mode) => {
+      state.mode = mode;
+      const isInput = mode === "input";
+      inputModeButton.classList.toggle("is-active", isInput);
+      cursorModeButton.classList.toggle("is-active", !isInput);
+      inputModeButton.setAttribute("aria-selected", String(isInput));
+      cursorModeButton.setAttribute("aria-selected", String(!isInput));
+      cursorControls.hidden = isInput;
+      textInput.readOnly = !isInput;
+      modeHelper.textContent = isInput
+        ? "Input mode is active. Type to update the text."
+        : "Cursor mode is active. Use sliders and arrows to move without a keyboard.";
+
+      if (isInput) {
+        textInput.focus();
       } else {
-        commandInput.value = "";
-        commandInput.focus();
+        textInput.blur();
       }
     };
 
-    editor.addEventListener("keydown", (event) => {
-      if (modifierState.ctrl.active || modifierState.meta.active) {
-        event.preventDefault();
-        setCommandBufferActive(true);
-      }
+    inputModeButton.addEventListener("click", () => setMode("input"));
+    cursorModeButton.addEventListener("click", () => setMode("cursor"));
+
+    textInput.addEventListener("input", syncFromTextarea);
+    textInput.addEventListener("select", syncFromTextarea);
+    textInput.addEventListener("keyup", syncFromTextarea);
+
+    cursorSlider.addEventListener("input", (event) => {
+      setCursor(Number(event.target.value));
+      updateStatus();
+      renderDisplay();
     });
 
-    editor.addEventListener("input", () => {
-      exitSelectionMode();
+    selectionStartSlider.addEventListener("input", (event) => {
+      setSelectionRange(Number(event.target.value), state.selectionEnd);
+      updateStatus();
+      renderDisplay();
     });
 
-    commandInput.addEventListener("keydown", (event) => {
-      const ctrlActive = modifierState.ctrl.active || event.ctrlKey;
-      const metaActive = modifierState.meta.active || event.metaKey;
-      if (!ctrlActive && !metaActive) {
-        return;
-      }
-
-      const key = getBindingKey(event);
-      const bindings = ctrlActive ? keyBindings.ctrl : keyBindings.meta;
-      const command = bindings[key];
-
-      if (!command) {
-        if (ctrlActive) resetModifierIfNeeded("ctrl");
-        if (metaActive) resetModifierIfNeeded("meta");
-        setCommandBufferActive(false);
-        editor.focus();
-        return;
-      }
-
-      event.preventDefault();
-      executeCommand(command);
-      commandInput.value = "";
-
-      if (ctrlActive && modifierState.ctrl.active && !modifierState.ctrl.latched) {
-        resetModifierIfNeeded("ctrl");
-      }
-
-      if (metaActive && modifierState.meta.active && !modifierState.meta.latched) {
-        resetModifierIfNeeded("meta");
-      }
-
-      finalizeCommand();
+    selectionEndSlider.addEventListener("input", (event) => {
+      setSelectionRange(state.selectionStart, Number(event.target.value));
+      updateStatus();
+      renderDisplay();
     });
+
+    resetSelectionButton.addEventListener("click", () => {
+      setCursor(state.cursor);
+      updateStatus();
+      renderDisplay();
+    });
+
+    document.querySelectorAll("[data-move]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const direction = event.currentTarget.dataset.move;
+        if (direction === "up" || direction === "down") {
+          moveCursorVertical(direction);
+        } else {
+          moveCursorHorizontal(direction);
+        }
+        updateStatus();
+        renderDisplay();
+      });
+    });
+
+    syncFromTextarea();
+    setMode("input");
   </script>
 </body>
 </html>
