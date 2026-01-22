@@ -1,1 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Text Editor Slider Cursor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
 
+    body {
+      margin: 0;
+      padding: 32px;
+      background: #f5f6f8;
+      color: #1b1d22;
+    }
+
+    .editor-shell {
+      max-width: 980px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+      padding: 28px 32px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      margin: 0;
+      font-weight: 700;
+    }
+
+    p {
+      margin: 0;
+      color: #4b5563;
+      line-height: 1.5;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      padding: 18px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      font-size: 1rem;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    textarea:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    .slider-panel {
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 20px 22px;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .slider-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      justify-content: space-between;
+    }
+
+    .positions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      font-size: 0.95rem;
+      color: #334155;
+    }
+
+    .positions span {
+      background: #e2e8f0;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .slider-track {
+      position: relative;
+      height: 56px;
+      padding: 24px 10px;
+    }
+
+    .track-base {
+      position: absolute;
+      inset: 50% 10px auto 10px;
+      height: 6px;
+      border-radius: 999px;
+      background: #cbd5f5;
+      transform: translateY(-50%);
+    }
+
+    .track-selection {
+      position: absolute;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #4f46e5, #9333ea);
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .handle {
+      position: absolute;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px solid #111827;
+      background: #ffffff;
+      cursor: grab;
+      display: grid;
+      place-items: center;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .handle:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+    }
+
+    .handle[data-type="cursor"] {
+      border-color: #0f172a;
+      background: #0f172a;
+    }
+
+    .handle[data-type="cursor"]::after {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #f8fafc;
+    }
+
+    .handle-label {
+      position: absolute;
+      top: -28px;
+      background: #111827;
+      color: #fff;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+      border-radius: 999px;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+
+    .helper {
+      font-size: 0.9rem;
+      color: #475569;
+      margin: 0;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #111827;
+      color: #fff;
+    }
+
+    button.secondary {
+      background: #e2e8f0;
+      color: #111827;
+    }
+
+    @media (max-width: 700px) {
+      body {
+        padding: 18px;
+      }
+
+      .editor-shell {
+        padding: 20px;
+      }
+
+      .slider-track {
+        height: 64px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="editor-shell">
+    <header>
+      <h1>Slider-Controlled Text Editor</h1>
+      <p>Drag the slider handles to move the cursor or select text. The start and end handles define the selection range.</p>
+    </header>
+
+    <textarea id="editor" spellcheck="false">A cursor slider lets you jump to any character.
+Selection handles let you highlight words without dragging in the text field.
+
+Try selecting the word "highlight" using the slider bar below.</textarea>
+
+    <section class="slider-panel">
+      <div class="slider-header">
+        <strong>Cursor &amp; Selection Slider</strong>
+        <div class="positions" aria-live="polite">
+          <span id="cursorPos">Cursor: 0</span>
+          <span id="startPos">Start: 0</span>
+          <span id="endPos">End: 0</span>
+        </div>
+      </div>
+
+      <div class="slider-track" id="sliderTrack" aria-label="Selection slider" role="group">
+        <div class="track-base"></div>
+        <div class="track-selection" id="selectionRange"></div>
+        <button class="handle" id="startHandle" data-type="start" aria-label="Selection start handle" type="button">
+          <span class="handle-label">Start</span>
+        </button>
+        <button class="handle" id="endHandle" data-type="end" aria-label="Selection end handle" type="button">
+          <span class="handle-label">End</span>
+        </button>
+        <button class="handle" id="cursorHandle" data-type="cursor" aria-label="Cursor handle" type="button">
+          <span class="handle-label">Cursor</span>
+        </button>
+      </div>
+
+      <p class="helper">Tip: Move the cursor handle to clear the selection. Start/end handles create a range.</p>
+
+      <div class="controls">
+        <button id="selectWord">Select Word</button>
+        <button id="reset" class="secondary">Reset</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const editor = document.getElementById("editor");
+    const track = document.getElementById("sliderTrack");
+    const selectionRange = document.getElementById("selectionRange");
+    const startHandle = document.getElementById("startHandle");
+    const endHandle = document.getElementById("endHandle");
+    const cursorHandle = document.getElementById("cursorHandle");
+    const cursorPos = document.getElementById("cursorPos");
+    const startPos = document.getElementById("startPos");
+    const endPos = document.getElementById("endPos");
+    const selectWordButton = document.getElementById("selectWord");
+    const resetButton = document.getElementById("reset");
+
+    let state = {
+      cursor: 0,
+      start: 0,
+      end: 0,
+    };
+
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+    const getMax = () => editor.value.length;
+
+    const valueToPercent = (value) => {
+      const max = getMax();
+      if (max === 0) {
+        return 0;
+      }
+      return (value / max) * 100;
+    };
+
+    const updateTextareaSelection = () => {
+      const { start, end, cursor } = state;
+      if (start === end) {
+        editor.setSelectionRange(cursor, cursor);
+        return;
+      }
+      editor.setSelectionRange(start, end);
+    };
+
+    const syncUI = () => {
+      const max = getMax();
+      state.cursor = clamp(state.cursor, 0, max);
+      state.start = clamp(state.start, 0, max);
+      state.end = clamp(state.end, 0, max);
+
+      if (state.start > state.end) {
+        [state.start, state.end] = [state.end, state.start];
+      }
+
+      const cursorPercent = valueToPercent(state.cursor);
+      const startPercent = valueToPercent(state.start);
+      const endPercent = valueToPercent(state.end);
+
+      cursorHandle.style.left = `${cursorPercent}%`;
+      startHandle.style.left = `${startPercent}%`;
+      endHandle.style.left = `${endPercent}%`;
+
+      const left = Math.min(startPercent, endPercent);
+      const right = Math.max(startPercent, endPercent);
+      selectionRange.style.left = `${left}%`;
+      selectionRange.style.width = `${right - left}%`;
+
+      cursorPos.textContent = `Cursor: ${state.cursor}`;
+      startPos.textContent = `Start: ${state.start}`;
+      endPos.textContent = `End: ${state.end}`;
+
+      updateTextareaSelection();
+    };
+
+    const positionToValue = (clientX) => {
+      const rect = track.getBoundingClientRect();
+      const max = getMax();
+      const x = clamp(clientX - rect.left - 10, 0, rect.width - 20);
+      const percent = (x / (rect.width - 20)) || 0;
+      return Math.round(percent * max);
+    };
+
+    const updateState = (type, value) => {
+      if (type === "cursor") {
+        state.cursor = value;
+        state.start = value;
+        state.end = value;
+      } else if (type === "start") {
+        state.start = value;
+        state.cursor = state.end;
+      } else if (type === "end") {
+        state.end = value;
+        state.cursor = state.end;
+      }
+      syncUI();
+    };
+
+    const startDrag = (handle, type) => {
+      const onMove = (event) => {
+        const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+        updateState(type, positionToValue(clientX));
+      };
+
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.removeEventListener("touchmove", onMove);
+        document.removeEventListener("touchend", onUp);
+        handle.style.cursor = "grab";
+      };
+
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      document.addEventListener("touchmove", onMove, { passive: true });
+      document.addEventListener("touchend", onUp);
+      handle.style.cursor = "grabbing";
+    };
+
+    [startHandle, endHandle, cursorHandle].forEach((handle) => {
+      const type = handle.dataset.type;
+      handle.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        startDrag(handle, type);
+      });
+      handle.addEventListener("touchstart", (event) => {
+        event.preventDefault();
+        startDrag(handle, type);
+      }, { passive: false });
+      handle.addEventListener("keydown", (event) => {
+        const step = event.shiftKey ? 5 : 1;
+        if (event.key === "ArrowLeft") {
+          updateState(type, clamp(state[type], 0, getMax()) - step);
+        }
+        if (event.key === "ArrowRight") {
+          updateState(type, clamp(state[type], 0, getMax()) + step);
+        }
+      });
+    });
+
+    track.addEventListener("click", (event) => {
+      if (event.target.classList.contains("handle")) {
+        return;
+      }
+      const value = positionToValue(event.clientX);
+      updateState("cursor", value);
+    });
+
+    editor.addEventListener("input", () => {
+      const max = getMax();
+      state.cursor = clamp(state.cursor, 0, max);
+      state.start = clamp(state.start, 0, max);
+      state.end = clamp(state.end, 0, max);
+      syncUI();
+    });
+
+    selectWordButton.addEventListener("click", () => {
+      const text = editor.value;
+      const target = "highlight";
+      const index = text.indexOf(target);
+      if (index !== -1) {
+        state.start = index;
+        state.end = index + target.length;
+        state.cursor = state.end;
+      }
+      syncUI();
+      editor.focus();
+    });
+
+    resetButton.addEventListener("click", () => {
+      state = { cursor: 0, start: 0, end: 0 };
+      syncUI();
+      editor.focus();
+    });
+
+    editor.addEventListener("click", () => {
+      state.cursor = editor.selectionStart;
+      state.start = editor.selectionStart;
+      state.end = editor.selectionEnd;
+      syncUI();
+    });
+
+    syncUI();
+  </script>
+</body>
+</html>
