@@ -401,6 +401,10 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
       return Math.round(percent * max);
     };
 
+    const scrollEditorIntoView = () => {
+      editor.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
     const updateState = (type, value) => {
       if (type === "cursor") {
         state.cursor = value;
@@ -421,6 +425,7 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
     };
 
     const startDrag = (handle, type) => {
+      scrollEditorIntoView();
       const onMove = (event) => {
         const clientX = event.touches ? event.touches[0].clientX : event.clientX;
         updateState(type, positionToValue(clientX));
@@ -454,9 +459,11 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
       handle.addEventListener("keydown", (event) => {
         const step = event.shiftKey ? 5 : 1;
         if (event.key === "ArrowLeft") {
+          scrollEditorIntoView();
           updateState(type, clamp(state[type], 0, getMax()) - step);
         }
         if (event.key === "ArrowRight") {
+          scrollEditorIntoView();
           updateState(type, clamp(state[type], 0, getMax()) + step);
         }
       });
@@ -466,6 +473,7 @@ Try selecting the word "highlight" using the slider bar below.</textarea>
       if (event.target.classList.contains("handle")) {
         return;
       }
+      scrollEditorIntoView();
       const value = positionToValue(event.clientX);
       updateState("cursor", value);
     });
