@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Text Editor</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: #0f1115;
+      color: #f1f4f8;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 12px 16px;
+      background: #161a22;
+      border-bottom: 1px solid #242b38;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .editor-wrap {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 12px 180px;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      width: 100%;
+      flex: 1;
+      resize: none;
+      padding: 16px;
+      font-size: 16px;
+      line-height: 1.5;
+      border-radius: 12px;
+      border: 1px solid #2d3445;
+      background: #0b0d12;
+      color: #f5f7fb;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    textarea:focus {
+      outline: 2px solid #3d6cff;
+      border-color: #3d6cff;
+    }
+
+    .toolbar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(20, 24, 32, 0.98);
+      border-top: 1px solid #2a3344;
+      padding: 10px 12px 18px;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      z-index: 10;
+      backdrop-filter: blur(6px);
+    }
+
+    .toolbar-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .toolbar-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9aa4b2;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 600;
+      background: #243049;
+      color: #f0f4ff;
+      cursor: pointer;
+      min-width: 90px;
+      text-align: center;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      background: #2f3f60;
+    }
+
+    .group-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    @media (max-width: 600px) {
+      .editor-wrap {
+        padding: 10px 10px 220px;
+      }
+
+      button {
+        min-width: 80px;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Quick Text Editor</h1>
+  </header>
+
+  <main class="editor-wrap">
+    <textarea id="editor" aria-label="Text editor" spellcheck="false" placeholder="Start typing here..."></textarea>
+  </main>
+
+  <section class="toolbar" aria-label="Editing toolbar">
+    <div class="group-block">
+      <div class="toolbar-label">Move</div>
+      <div class="toolbar-group">
+        <button type="button" data-action="move-left">Left</button>
+        <button type="button" data-action="move-right">Right</button>
+        <button type="button" data-action="move-up">Up</button>
+        <button type="button" data-action="move-down">Down</button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" data-action="move-start">Doc Start</button>
+        <button type="button" data-action="move-end">Doc End</button>
+        <button type="button" data-action="line-start">Line Start</button>
+        <button type="button" data-action="line-end">Line End</button>
+      </div>
+    </div>
+
+    <div class="group-block">
+      <div class="toolbar-label">Selection</div>
+      <div class="toolbar-group">
+        <button type="button" data-action="select-all">Select All</button>
+        <button type="button" data-action="select-line">Select Line</button>
+        <button type="button" data-action="select-none">Clear Sel</button>
+      </div>
+    </div>
+
+    <div class="group-block">
+      <div class="toolbar-label">Clipboard</div>
+      <div class="toolbar-group">
+        <button type="button" data-action="copy">Copy</button>
+        <button type="button" data-action="cut">Cut</button>
+        <button type="button" data-action="paste">Paste</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const editor = document.getElementById("editor");
+
+    const getLineBounds = (text, index) => {
+      const start = text.lastIndexOf("\n", index - 1) + 1;
+      const endBreak = text.indexOf("\n", index);
+      const end = endBreak === -1 ? text.length : endBreak;
+      return { start, end };
+    };
+
+    const getColumn = (text, index) => {
+      return index - (text.lastIndexOf("\n", index - 1) + 1);
+    };
+
+    const moveCursor = (newPos) => {
+      editor.setSelectionRange(newPos, newPos);
+      editor.focus();
+    };
+
+    const moveVertical = (direction) => {
+      const text = editor.value;
+      const pos = editor.selectionStart;
+      const { start: lineStart } = getLineBounds(text, pos);
+      const column = getColumn(text, pos);
+      const targetLineIndex = direction === "up"
+        ? text.lastIndexOf("\n", lineStart - 2)
+        : text.indexOf("\n", lineStart);
+
+      if (direction === "up" && targetLineIndex === -1) {
+        moveCursor(0);
+        return;
+      }
+
+      if (direction === "down" && targetLineIndex === -1) {
+        moveCursor(text.length);
+        return;
+      }
+
+      const targetLineStart = direction === "up"
+        ? (text.lastIndexOf("\n", targetLineIndex - 1) + 1)
+        : targetLineIndex + 1;
+      const targetLineEnd = getLineBounds(text, targetLineStart).end;
+      const nextPos = Math.min(targetLineStart + column, targetLineEnd);
+      moveCursor(nextPos);
+    };
+
+    const actions = {
+      "move-left": () => {
+        moveCursor(Math.max(0, editor.selectionStart - 1));
+      },
+      "move-right": () => {
+        moveCursor(Math.min(editor.value.length, editor.selectionStart + 1));
+      },
+      "move-up": () => moveVertical("up"),
+      "move-down": () => moveVertical("down"),
+      "move-start": () => moveCursor(0),
+      "move-end": () => moveCursor(editor.value.length),
+      "line-start": () => {
+        const { start } = getLineBounds(editor.value, editor.selectionStart);
+        moveCursor(start);
+      },
+      "line-end": () => {
+        const { end } = getLineBounds(editor.value, editor.selectionStart);
+        moveCursor(end);
+      },
+      "select-all": () => {
+        editor.select();
+        editor.focus();
+      },
+      "select-line": () => {
+        const { start, end } = getLineBounds(editor.value, editor.selectionStart);
+        editor.setSelectionRange(start, end);
+        editor.focus();
+      },
+      "select-none": () => {
+        const pos = editor.selectionStart;
+        editor.setSelectionRange(pos, pos);
+        editor.focus();
+      },
+      copy: async () => {
+        const selection = editor.value.slice(editor.selectionStart, editor.selectionEnd);
+        if (!selection) {
+          return;
+        }
+        await navigator.clipboard.writeText(selection);
+      },
+      cut: async () => {
+        const { selectionStart, selectionEnd, value } = editor;
+        if (selectionStart === selectionEnd) {
+          return;
+        }
+        const selection = value.slice(selectionStart, selectionEnd);
+        await navigator.clipboard.writeText(selection);
+        editor.value = value.slice(0, selectionStart) + value.slice(selectionEnd);
+        moveCursor(selectionStart);
+      },
+      paste: async () => {
+        const text = await navigator.clipboard.readText();
+        const { selectionStart, selectionEnd, value } = editor;
+        const nextValue = value.slice(0, selectionStart) + text + value.slice(selectionEnd);
+        editor.value = nextValue;
+        const cursor = selectionStart + text.length;
+        moveCursor(cursor);
+      }
+    };
+
+    document.querySelectorAll("[data-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const action = actions[button.dataset.action];
+        if (action) {
+          action();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
